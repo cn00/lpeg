@@ -1,22 +1,47 @@
-# Copyright (C) 2011-2012 LuaDist.
-# Created by Peter Kapec
-# Redistribution and use of this file is allowed according to the terms of the MIT license.
-# For details see the COPYRIGHT file distributed with LuaDist.
-# Please note that the package source code is licensed under its own license.
+cmake_minimum_required(VERSION 3.13)
 
-project ( lpeg C )
-cmake_minimum_required ( VERSION 2.8 )
-include ( cmake/dist.cmake )
-include ( lua )
+set(TARGET_NAME lpeg)
+project(${TARGET_NAME})
 
-install_lua_module ( lpeg lpvm.c lpcap.c lptree.c lpcode.c lpprint.c lpeg.def )
-install_lua_module ( re re.lua )
-install_doc ( lpeg.html re.html lpeg-128.gif )
-install_data ( HISTORY )
-install_test ( test.lua )
+# add_subdirectory(third_party/flatbuffers)
+# add_subdirectory(../lua binary_dir EXCLUDE_FROM_ALL)
 
-# for tests
-file ( WRITE "${CMAKE_CURRENT_BINARY_DIR}/strict.lua" "" )
-add_lua_module ( strict ${CMAKE_CURRENT_BINARY_DIR}/strict.lua )
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -L${CMAKE_CURRENT_SOURCE_DIR} -std=gnu++11 -stdlib=libc++ ")
 
-add_lua_test ( test.lua )
+file(GLOB_RECURSE "${TARGET_NAME}_sources" ./*.c ./*.h )
+
+macro(source_group_by_dir proj_dir source_files)
+  if(MSVC OR APPLE)
+    get_filename_component(sgbd_cur_dir ${proj_dir} ABSOLUTE)
+    foreach(sgbd_file ${${source_files}})
+      get_filename_component(sgbd_abs_file ${sgbd_file} ABSOLUTE)
+        file(RELATIVE_PATH sgbd_fpath ${sgbd_cur_dir} ${sgbd_abs_file})
+        string(REGEX REPLACE "\(.*\)/.*" \\1 sgbd_group_name ${sgbd_fpath})
+        string(COMPARE EQUAL ${sgbd_fpath} ${sgbd_group_name} sgbd_nogroup)
+        string(REPLACE "/" "\\" sgbd_group_name ${sgbd_group_name})
+        if(sgbd_nogroup)
+            set(sgbd_group_name "\\")
+        endif(sgbd_nogroup)
+        source_group(${sgbd_group_name} FILES ${sgbd_file})
+    endforeach(sgbd_file)
+  endif(MSVC OR APPLE)
+endmacro(source_group_by_dir)
+
+source_group_by_dir(${CMAKE_CURRENT_SOURCE_DIR} "${TARGET_NAME}_sources")
+
+
+include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/../lua/src
+)
+
+link_directories(
+    ${CMAKE_SOURCE_DIR}/lib
+)
+
+add_library(${TARGET_NAME} SHARED ${${TARGET_NAME}_sources})
+target_link_libraries(${TARGET_NAME} liblua)
+
+
+
